@@ -1,3 +1,6 @@
+
+from sklearn.experimental import enable_iterative_imputer  # 显式启用 IterativeImputer
+from sklearn.impute import IterativeImputer
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -5,10 +8,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import torch
 from torch.utils.data import Dataset, DataLoader
-from sklearn.impute import IterativeImputer
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error, r2_score
+import webbrowser
+import time
 
+# 设置 Streamlit 页面配置
 st.set_page_config(page_title="深度学习数据处理 App", layout="wide")
 st.title("🧠 深度学习数据预处理与评估平台")
 
@@ -18,14 +23,35 @@ if uploaded_file:
     df = pd.read_csv(uploaded_file)
     st.write("### 原始数据预览", df.head())
 
-    # 缺失值插补
+    # 解决日期列问题
+    # 假设 'date_column' 是日期列
+    if 'date_column' in df.columns:
+        # 将日期列转换为 datetime 类型
+        df['date_column'] = pd.to_datetime(df['date_column'])
+        
+        # 方法一：将日期列转换为时间戳（秒）
+        df['date_timestamp'] = df['date_column'].astype(int) / 10**9  # 转换为时间戳（秒）
+        
+        # 或者方法二：提取日期特征（年、月、日、星期几等）
+        df['year'] = df['date_column'].dt.year
+        df['month'] = df['date_column'].dt.month
+        df['day'] = df['date_column'].dt.day
+        df['weekday'] = df['date_column'].dt.weekday
+        df['hour'] = df['date_column'].dt.hour
+        
+        # 删除原始日期列
+        df = df.drop(columns=['date_column'])
+    
+    # 缺失值插补与标准化
     st.subheader("🔧 数据插补与标准化")
     imputer = IterativeImputer(random_state=0)
     scaler = StandardScaler()
 
+    # 执行插补和标准化
     imputed_data = imputer.fit_transform(df)
     scaled_data = scaler.fit_transform(imputed_data)
 
+    # 创建插补后的数据框
     df_imputed = pd.DataFrame(imputed_data, columns=df.columns)
     st.write("### 插补后的数据", df_imputed.head())
 
@@ -98,3 +124,6 @@ if uploaded_file:
     result = get_result(X_test, preds)
     st.write(pd.DataFrame([result]))
 
+    # 强制打开浏览器
+    time.sleep(1)  # 等待一会儿，确保应用启动
+    webbrowser.open('http://localhost:8501')  # 强制打开浏览器
